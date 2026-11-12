@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "agent-media": { "command": "npx", "args": ["-y", "@zhin.js/agent-media", "mcp"] },
+    "browser": { "command": "npx", "args": ["-y", "@zhin.js/agent-media", "proxy", "--", "npx", "-y", "@playwright/mcp@latest"] }
+  }
+}

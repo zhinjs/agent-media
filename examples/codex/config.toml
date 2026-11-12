@@ -1,0 +1,20 @@
+# ~/.codex/config.toml
+# Codex hooks cannot rewrite tool output, so wrap media-producing MCP servers with the proxy.
+
+[mcp_servers.agent-media]
+command = "npx"
+args = ["-y", "@zhin.js/agent-media", "mcp"]
+
+[mcp_servers.browser]
+command = "npx"
+args = ["-y", "@zhin.js/agent-media", "proxy", "--", "npx", "-y", "@playwright/mcp@latest"]
+
+# Optional: publish generated images straight to S3/R2/OSS instead of keeping them private.
+# [mcp_servers.images]
+# command = "npx"
+# args = ["-y", "@zhin.js/agent-media", "proxy", "--public", "--", "npx", "-y", "your-image-mcp"]
+# [mcp_servers.images.env]
+# AGENT_MEDIA_S3_ENDPOINT = "https://<account>.r2.cloudflarestorage.com"
+# AGENT_MEDIA_S3_BUCKET = "media"
+# AGENT_MEDIA_S3_PUBLIC_BASE_URL = "https://media.example.com"
+# AGENT_MEDIA_S3_ACCESS_KEY_ID / AGENT_MEDIA_S3_SECRET_ACCESS_KEY: set in your shell, not in this file

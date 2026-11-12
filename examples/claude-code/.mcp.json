@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "agent-media": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@zhin.js/agent-media", "mcp"],
+      "env": { "AGENT_MEDIA_DIR": "${HOME}/.cache/agent-media" }
+    },
+    "browser": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@zhin.js/agent-media", "proxy", "--", "npx", "-y", "@playwright/mcp@latest"]
+    }
+  }
+}

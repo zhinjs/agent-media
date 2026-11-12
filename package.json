@@ -1,0 +1,60 @@
+{
+  "name": "@zhin.js/agent-media",
+  "version": "0.1.0",
+  "description": "Keep base64 media out of LLM context: capture images/audio from tool results into private or public (S3/R2/OSS) storage and hand the model a URL or asset_id.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhinjs/agent-media.git"
+  },
+  "keywords": [
+    "mcp",
+    "agent",
+    "llm",
+    "base64",
+    "image",
+    "context",
+    "claude-code",
+    "codex",
+    "s3",
+    "r2",
+    "oss"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "agent-media": "./lib/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "skills",
+    "examples",
+    "README.md",
+    "README.zh-CN.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit && tsc -p tsconfig.examples.json",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "aws4fetch": "^1.0.20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  },
+  "packageManager": "pnpm@10.28.0"
+}
