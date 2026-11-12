@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+- New `@zhin.js/agent-media/core` entry: storage, capture and inspection without the MCP server, CLI or hooks. It never loads `@modelcontextprotocol/sdk` at run time.
+- `S3PublicStore.ownsUrl` is now exact. A public URL with a query string, fragment or extra path no longer counts as owned. A presigned URL must carry its signature query.
+
 ## 0.1.1
 
 - The npm package now shows the English README; the Chinese README moved to `docs/README.zh-CN.md`, a full translation of the English one.

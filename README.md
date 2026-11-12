@@ -138,6 +138,8 @@ const { value, captured } = await captureMedia(raw, { privateStore, scope: sessi
 history.push(toolResult(value)); // never `raw`
 ```
 
+Libraries and agent frameworks that only need storage and capture can import `@zhin.js/agent-media/core` instead. It exports the same `captureMedia`, `LocalMediaStore`, `S3PublicStore`, `InspectionQueue`, `inferS3Defaults`, `storesFromEnv` and `sniffMime`, and never loads the MCP SDK at run time. The package still installs the SDK, because the CLI needs it.
+
 `captureMedia` recognises, and only these — arbitrary base64-looking strings are left alone, because they may be tokens or hashes:
 
 - MCP `{type:"image"|"audio", data, mimeType}` and `{type:"resource", resource:{blob, mimeType}}`

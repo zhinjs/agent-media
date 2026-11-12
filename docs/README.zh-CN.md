@@ -138,6 +138,8 @@ const { value, captured } = await captureMedia(raw, { privateStore, scope: sessi
 history.push(toolResult(value)); // 写进历史的是 value，不是 raw
 ```
 
+只需要存储和拦截能力的库或 agent 框架，可以改为导入 `@zhin.js/agent-media/core`。它导出同样的 `captureMedia`、`LocalMediaStore`、`S3PublicStore`、`InspectionQueue`、`inferS3Defaults`、`storesFromEnv` 和 `sniffMime`，运行时从不加载 MCP SDK。安装这个包时仍会装上 SDK，因为 CLI 需要它。
+
 `captureMedia` 只识别下面这些形态。看起来像 base64 的任意字符串不会被动，因为它们可能是 token 或哈希：
 
 - MCP 的 `{type:"image"|"audio", data, mimeType}` 和 `{type:"resource", resource:{blob, mimeType}}`
