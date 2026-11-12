@@ -84,10 +84,17 @@ export class S3PublicStore implements PublicMediaStore {
     });
   }
 
+  /**
+   * Exactly an object URL this store mints. Public URLs carry no query or fragment;
+   * presigned URLs carry the signature query and nothing after it.
+   */
   ownsUrl(url: string): boolean {
     const base = this.#urlMode === 'public' ? this.#publicBase! : this.#objectBase;
-    if (!url.startsWith(base)) return false;
-    return KEY.test(url.slice(base.length).split('?')[0]!);
+    if (!url.startsWith(base) || url.includes('#')) return false;
+    const rest = url.slice(base.length);
+    const query = rest.indexOf('?');
+    if (this.#urlMode === 'public') return query === -1 && KEY.test(rest);
+    return query !== -1 && KEY.test(rest.slice(0, query)) && rest.slice(query).includes('X-Amz-Signature=');
   }
 
   async publish(media: MediaBytes, signal?: AbortSignal): Promise<PublicMediaRef> {

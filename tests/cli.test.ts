@@ -85,3 +85,25 @@ describe('npm package contents', () => {
     }
   }, 60_000);
 });
+
+describe('core entry', () => {
+  it('never imports the MCP SDK, directly or transitively', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const { dirname, resolve } = await import('node:path');
+    const seen = new Set<string>();
+    const visit = async (file: string): Promise<void> => {
+      if (seen.has(file)) return;
+      seen.add(file);
+      const source = await readFile(file, 'utf8');
+      expect(source, file).not.toMatch(/(?:from\s+|import\s*\(\s*|import\s+)'@modelcontextprotocol\//u);
+      for (const [, spec] of source.matchAll(/from\s+'(\.[^']+)'/gu)) await visit(resolve(dirname(file), spec!));
+    };
+    await visit(join(import.meta.dirname, '..', 'lib', 'core.js'));
+    expect(seen.size).toBeGreaterThan(5);
+  });
+
+  it('is exported as @zhin.js/agent-media/core', async () => {
+    const core = await import(join(import.meta.dirname, '..', 'lib', 'core.js')) as Record<string, unknown>;
+    expect(Object.keys(core)).toEqual(expect.arrayContaining(['captureMedia', 'S3PublicStore', 'LocalMediaStore', 'InspectionQueue', 'sniffMime']));
+  });
+});

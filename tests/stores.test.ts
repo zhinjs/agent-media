@@ -72,6 +72,8 @@ describe('S3PublicStore', () => {
     expect(ref.url).toMatch(/^https:\/\/cdn\.example\.com\/tmp\/[0-9a-f-]{36}\.png$/u);
     expect(store.ownsUrl(ref.url)).toBe(true);
     expect(store.ownsUrl('https://cdn.example.com/tmp/../x.png')).toBe(false);
+    for (const forged of [`${ref.url}?redirect=1`, `${ref.url}#x`, `${ref.url}/extra`, ref.url.replace('tmp/', 'other/'),
+      ref.url.replace('cdn.example.com', 'cdn.example.com.evil')]) expect(store.ownsUrl(forged)).toBe(false);
   });
 
   it('supports virtual-hosted style (Aliyun OSS) and presigned URLs', async () => {
@@ -86,6 +88,8 @@ describe('S3PublicStore', () => {
     expect(put.headers.get('authorization')).toContain('/cn-hangzhou/s3/aws4_request');
     expect(ref.url).toContain('X-Amz-Signature=');
     expect(ref.url).toContain('X-Amz-Expires=600');
+    expect(store.ownsUrl(ref.url)).toBe(true);
+    expect(store.ownsUrl(ref.url.split('?')[0]!)).toBe(false);
   });
 
   it('surfaces upload failures', async () => {
