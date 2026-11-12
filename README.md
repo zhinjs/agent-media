@@ -1,6 +1,6 @@
 # agent-media
 
-[中文](./README.zh-CN.md)
+[中文](./docs/README.zh-CN.md)
 
 Keep base64 media out of LLM context. `agent-media` sits at the tool-result boundary: when a tool returns an image, audio clip or PDF as base64, the bytes go to storage and the model gets a short reference instead — a private `asset_id` it can inspect on demand, or a public S3/R2/OSS URL.
 
@@ -63,7 +63,7 @@ The hook leaves MCP image blocks alone by default, because Claude Code already s
 Install the skill:
 
 ```bash
-mkdir -p .claude/skills && cp -r node_modules/@zhin.js/agent-media/skills/agent-media .claude/skills/
+npx -y @zhin.js/agent-media skill .claude/skills
 ```
 
 ### Codex CLI
@@ -80,7 +80,13 @@ command = "npx"
 args = ["-y", "@zhin.js/agent-media", "proxy", "--", "npx", "-y", "@playwright/mcp@latest"]
 ```
 
-Copy `skills/agent-media` into `.agents/skills/` of your repository.
+Install the skill into your repository:
+
+```bash
+npx -y @zhin.js/agent-media skill .agents/skills
+```
+
+Codex hooks cannot rewrite tool output, so the proxy is the only way to capture media there.
 
 More: [`examples/`](./examples) (Claude Code, Codex, Gemini CLI, custom loop).
 
@@ -92,6 +98,7 @@ More: [`examples/`](./examples) (Claude Code, Codex, Gemini CLI, custom loop).
 | `agent-media proxy [--public] [--keep-blocks] -- <cmd> [args…]` | Re-exports an upstream stdio MCP server's tools with media captured, plus the two tools above. `--public` publishes upstream media to S3 instead of keeping it private (use for image generators whose output is meant for users). `--keep-blocks` captures only text-borne base64. |
 | `agent-media hook claude-code [--capture-blocks]` | Claude Code PostToolUse hook. Prints nothing when there is no media. |
 | `agent-media capture [--public] [--keep-blocks]` | Filter: JSON on stdin, JSON with media replaced on stdout. For other hook systems and scripts. |
+| `agent-media skill <skills-dir>` | Copies the skill to `<skills-dir>/agent-media/SKILL.md`. |
 
 ## Configuration
 
@@ -104,14 +111,20 @@ All by environment variables, so every harness configures it the same way.
 | `AGENT_MEDIA_MAX_MB` | `25` | Larger payloads are dropped, not stored. |
 | `AGENT_MEDIA_SCOPE` | `default` | Private assets are readable only within the same scope. |
 | `AGENT_MEDIA_S3_BUCKET` | — | Enables the public store. |
-| `AGENT_MEDIA_S3_ENDPOINT` | — | e.g. `https://<account>.r2.cloudflarestorage.com`, `https://oss-cn-hangzhou.aliyuncs.com`, `https://s3.us-east-1.amazonaws.com` |
-| `AGENT_MEDIA_S3_REGION` | `auto` | Bucket region for AWS / OSS. |
+| `AGENT_MEDIA_S3_ENDPOINT` | — | e.g. `https://<account>.r2.cloudflarestorage.com`, `https://s3.oss-cn-hangzhou.aliyuncs.com`, `https://cos.ap-guangzhou.myqcloud.com`, `https://s3.us-east-1.amazonaws.com` |
+| `AGENT_MEDIA_S3_REGION` | inferred | SigV4 signing region. Inferred for R2, Aliyun OSS, Tencent COS, AWS and Qiniu endpoints; otherwise `us-east-1`. |
 | `AGENT_MEDIA_S3_ACCESS_KEY_ID`, `AGENT_MEDIA_S3_SECRET_ACCESS_KEY` | — | Keep these in your shell or secret manager, not in committed config. |
 | `AGENT_MEDIA_S3_PREFIX` | `agent-media/` | Add a bucket lifecycle rule for it; this tool never deletes public objects. |
-| `AGENT_MEDIA_S3_VIRTUAL_HOSTED` | off | `1` for `https://<bucket>.<host>/` addressing (required by Aliyun OSS). |
+| `AGENT_MEDIA_S3_VIRTUAL_HOSTED` | inferred | `1`: `https://<bucket>.<host>/` addressing, `0`: `<endpoint>/<bucket>/`. Inferred as on for Aliyun OSS, Tencent COS, AWS and Qiniu; off for R2 and other endpoints. |
 | `AGENT_MEDIA_S3_URL_MODE` | `public` | `public`: `PUBLIC_BASE_URL + key`. `presigned`: signed GET URL; the bucket stays private. |
 | `AGENT_MEDIA_S3_PUBLIC_BASE_URL` | — | Required for `public` mode: the CDN / custom domain serving the bucket. |
 | `AGENT_MEDIA_S3_URL_TTL` | `3600` | Seconds, for `presigned` mode. |
+
+Without any `AGENT_MEDIA_S3_*` variable everything stays private and local; nothing is uploaded.
+
+### Getting S3 credentials
+
+Any S3-compatible service works. [docs/storage-providers.md](./docs/storage-providers.md) walks through Cloudflare R2, Aliyun OSS, Tencent Cloud COS, AWS S3, MinIO and Qiniu Kodo: where to create a bucket-scoped key, which endpoint and region to use, how to make objects readable, and the lifecycle rule that cleans up the prefix.
 
 ## Library
 

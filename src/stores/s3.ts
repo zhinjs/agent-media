@@ -4,16 +4,16 @@ import { MEDIA_EXTENSIONS, sniffMime } from '../sniff.js';
 import type { MediaBytes, PublicMediaRef, PublicMediaStore } from '../types.js';
 
 export interface S3PublicStoreOptions {
-  /** S3-compatible API endpoint, e.g. `https://<account>.r2.cloudflarestorage.com`, `https://oss-cn-hangzhou.aliyuncs.com`, `https://s3.us-east-1.amazonaws.com`. */
+  /** S3-compatible API endpoint, e.g. `https://<account>.r2.cloudflarestorage.com`, `https://s3.oss-cn-hangzhou.aliyuncs.com`, `https://s3.us-east-1.amazonaws.com`. */
   readonly endpoint: string;
   readonly bucket: string;
   readonly accessKeyId: string;
   readonly secretAccessKey: string;
-  /** Default `auto` (R2). Use the bucket's region for AWS / OSS. */
+  /** SigV4 signing region. Default: inferred from the endpoint (see inferS3Defaults). */
   readonly region?: string;
   /** Object directory ending in `/`. Configure a bucket lifecycle rule on it; this library never deletes. */
   readonly prefix?: string;
-  /** `https://<bucket>.<endpoint host>/key` instead of `<endpoint>/<bucket>/key`. Aliyun OSS requires it. */
+  /** `https://<bucket>.<endpoint host>/key` instead of `<endpoint>/<bucket>/key`. Default: inferred from the endpoint. */
   readonly virtualHosted?: boolean;
   /**
    * `public` (default): return `publicBaseUrl + prefix + key`; the bucket or CDN must allow anonymous reads.
@@ -28,6 +28,29 @@ export interface S3PublicStoreOptions {
 }
 
 const KEY = /^[0-9a-f-]{36}\.[a-z0-9]+$/u;
+
+export interface S3EndpointDefaults {
+  readonly provider: 'r2' | 'aliyun-oss' | 'tencent-cos' | 'aws' | 'qiniu' | 'unknown';
+  readonly region: string;
+  readonly virtualHosted: boolean;
+}
+
+/**
+ * Region and addressing implied by well-known endpoints, so most users only set endpoint + bucket.
+ * Aliyun OSS only accepts virtual-hosted requests; Tencent COS buckets created since 2024 reject path-style.
+ * Unknown endpoints (MinIO and other self-hosted servers) default to path-style and `us-east-1`.
+ */
+export function inferS3Defaults(endpoint: string): S3EndpointDefaults {
+  const host = new URL(endpoint).hostname.toLowerCase();
+  let m: RegExpExecArray | null;
+  if (host.endsWith('.r2.cloudflarestorage.com')) return { provider: 'r2', region: 'auto', virtualHosted: false };
+  if ((m = /^(?:s3\.)?oss-([a-z0-9-]+?)(?:-internal)?\.aliyuncs\.com$/u.exec(host))) return { provider: 'aliyun-oss', region: m[1]!, virtualHosted: true };
+  if ((m = /^cos\.([a-z0-9-]+)\.(?:myqcloud\.com|tencentcos\.cn)$/u.exec(host))) return { provider: 'tencent-cos', region: m[1]!, virtualHosted: true };
+  if ((m = /^s3[.-]([a-z0-9-]+)\.amazonaws\.com(?:\.cn)?$/u.exec(host))) return { provider: 'aws', region: m[1]!, virtualHosted: true };
+  if (host === 's3.amazonaws.com') return { provider: 'aws', region: 'us-east-1', virtualHosted: true };
+  if ((m = /^s3\.([a-z0-9-]+)\.qiniucs\.com$/u.exec(host))) return { provider: 'qiniu', region: m[1]!, virtualHosted: true };
+  return { provider: 'unknown', region: 'us-east-1', virtualHosted: false };
+}
 
 /** Publishes to any S3-compatible bucket: AWS S3, Cloudflare R2, Aliyun OSS, Tencent COS, MinIO. */
 export class S3PublicStore implements PublicMediaStore {
@@ -44,7 +67,8 @@ export class S3PublicStore implements PublicMediaStore {
     if (!options.accessKeyId?.trim() || !options.secretAccessKey?.trim()) throw new Error('S3 credentials are required');
     if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/u.test(options.bucket)) throw new Error('bucket name is invalid');
     const endpoint = httpsUrl(options.endpoint, 'endpoint');
-    this.#objectBase = options.virtualHosted
+    const inferred = inferS3Defaults(options.endpoint);
+    this.#objectBase = (options.virtualHosted ?? inferred.virtualHosted)
       ? `${endpoint.protocol}//${options.bucket}.${endpoint.host}/${prefix}`
       : `${endpoint.origin}/${options.bucket}/${prefix}`;
     this.#urlMode = options.urlMode ?? 'public';
@@ -55,7 +79,7 @@ export class S3PublicStore implements PublicMediaStore {
     this.#ttl = Math.min(Math.max(Math.floor(options.urlTtlSeconds ?? 3600), 1), 604_800);
     this.#fetch = options.fetch ?? fetch;
     this.#client = new AwsClient({
-      service: 's3', region: options.region ?? 'auto',
+      service: 's3', region: options.region || inferred.region,
       accessKeyId: options.accessKeyId, secretAccessKey: options.secretAccessKey, retries: 0,
     });
   }

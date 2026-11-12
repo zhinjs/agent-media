@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
+import { copyFile, mkdir } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -20,6 +22,8 @@ Usage:
   agent-media hook claude-code [--capture-blocks]
                                                  Claude Code PostToolUse hook (stdin → stdout)
   agent-media capture [--public] [--keep-blocks] Filter: JSON on stdin → JSON with media replaced on stdout
+  agent-media skill <skills-dir>                 Copy the agent-media skill into <skills-dir>/agent-media/SKILL.md
+                                                 (e.g. .claude/skills, .agents/skills)
 
 Configure with AGENT_MEDIA_* environment variables (see README).`;
 
@@ -27,6 +31,16 @@ async function main(argv: string[]): Promise<void> {
   const [command, ...rest] = argv;
   const sep = rest.indexOf('--');
   const flags = new Set(sep === -1 ? rest : rest.slice(0, sep));
+  if (command === 'skill') {
+    const target = rest[0];
+    if (!target) throw new Error('skill needs a target skills directory, e.g. .claude/skills');
+    const dir = join(resolve(target), 'agent-media');
+    await mkdir(dir, { recursive: true });
+    const destination = join(dir, 'SKILL.md');
+    await copyFile(new URL('../skills/agent-media/SKILL.md', import.meta.url), destination);
+    process.stdout.write(`${destination}\n`);
+    return;
+  }
   const env = storesFromEnv();
   const policy = flags.has('--public') ? 'public' as const : 'private' as const;
   if (policy === 'public' && !env.publicStore) throw new Error('--public needs AGENT_MEDIA_S3_* configuration');
