@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -65,4 +65,23 @@ describe('cli (built)', () => {
     expect(run.status).toBe(0);
     expect(JSON.parse(run.stdout).img).toMatch(/^agent-media:[0-9a-f-]{36}$/u);
   });
+
+  it('skill: copies SKILL.md into the target skills directory', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'agent-media-skill-'));
+    const run = spawnSync(process.execPath, [CLI, 'skill', join(dir, '.claude', 'skills')], { encoding: 'utf8' });
+    expect(run.status).toBe(0);
+    const copied = await readFile(join(dir, '.claude', 'skills', 'agent-media', 'SKILL.md'), 'utf8');
+    expect(copied).toContain('name: agent-media');
+  });
+});
+
+describe('npm package contents', () => {
+  it('ships exactly one root README so npm renders the English one, plus the Chinese docs', () => {
+    const out = execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], { cwd: join(import.meta.dirname, '..'), encoding: 'utf8' });
+    const files = (JSON.parse(out) as Array<{ files: Array<{ path: string }> }>)[0]!.files.map(f => f.path);
+    expect(files.filter(path => /^readme/iu.test(path))).toEqual(['README.md']);
+    for (const path of ['LICENSE', 'lib/cli.js', 'skills/agent-media/SKILL.md', 'docs/README.zh-CN.md', 'docs/storage-providers.md', 'docs/storage-providers.zh-CN.md']) {
+      expect(files).toContain(path);
+    }
+  }, 60_000);
 });
